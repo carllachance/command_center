@@ -17,6 +17,7 @@ export function createInitialState() {
       runId: 'run_2026_04_07_01',
       readinessComplete: false,
       documentAttentionRequired: false,
+      criticalOverrideMode: null,
       progressionPhase: 0,
       activeJob: {
         id: 'job_transform_77',
@@ -27,10 +28,10 @@ export function createInitialState() {
       selectedDayId: null,
       planApproved: false,
       plan: [
-        { id: 'p1', title: 'Load daily fed file', why: 'required for liquidity truth set', dependency: 'source/fed', required: true, impact: 'high', enabled: true },
-        { id: 'p2', title: 'Recompute anomaly baseline', why: 'normalize day-over-day volatility', dependency: 'derived/liquidity', required: false, impact: 'medium', enabled: true },
-        { id: 'p3', title: 'Refresh semantic lens cache', why: 'unlock daytime lens confidence', dependency: 'semantic/core', required: true, impact: 'high', enabled: true },
-        { id: 'p4', title: 'Run counterparty health checks', why: 'surface hidden ingestion drift', dependency: 'aggregate/counterparty', required: false, impact: 'medium', enabled: true }
+        { id: 'p1', title: 'Load daily fed file', why: 'required for liquidity truth set', dependency: 'source/fed', required: true, impact: 'high', enabled: true, approved: false },
+        { id: 'p2', title: 'Recompute anomaly baseline', why: 'normalize day-over-day volatility', dependency: 'derived/liquidity', required: false, impact: 'medium', enabled: true, approved: false },
+        { id: 'p3', title: 'Refresh semantic lens cache', why: 'unlock daytime lens confidence', dependency: 'semantic/core', required: true, impact: 'high', enabled: true, approved: false },
+        { id: 'p4', title: 'Run counterparty health checks', why: 'surface hidden ingestion drift', dependency: 'aggregate/counterparty', required: false, impact: 'medium', enabled: true, approved: false }
       ],
       milestones: [
         { id: 'm1', title: 'File received', state: 'done', detail: 'Fed file detected for April 6.', at: '07:14 UTC' },

@@ -24,6 +24,7 @@ function foundryPlanCard(state) {
       <div><strong>${row.title}</strong><p class="subtle">Why: ${row.why}</p></div>
       <div class="plan-meta">
         <span class="status ${row.required ? 's-active' : 's-warn'}">${row.required ? 'required' : 'optional'}</span>
+        <span class="status ${row.approved ? 's-healthy' : 's-muted'}">${row.approved ? 'approved' : 'pending'}</span>
         <span class="subtle">Dep: ${row.dependency}</span>
         <span class="subtle">Impact: ${row.impact}</span>
         <input type="checkbox" data-action="toggle-plan-step" data-plan-id="${row.id}" ${row.enabled ? 'checked' : ''} ${row.required ? 'disabled' : ''} />
@@ -32,7 +33,7 @@ function foundryPlanCard(state) {
     <div class="row mt-12 wrap">
       <button class="ghost" data-action="approve-plan">Approve all</button>
       <button class="ghost" data-action="toggle-optional">Toggle optional steps</button>
-      <button class="ghost">Edit plan</button>
+      <button class="ghost" disabled title="Not implemented yet">Edit plan</button>
       <button class="solid" data-action="run-plan">Run plan</button>
     </div>`);
 }
@@ -59,7 +60,7 @@ export function renderHomeView(state) {
     <div class="grid ${morning ? 'cols-2' : 'cols-3'}">
       ${morning
         ? `${readinessHeatmapCard(state, vm)}${foundryPlanCard(state)}`
-        : `${lensDeck(state)}${card('Featured Artifact', `<h4>${state.artifactState.featured.title}</h4><p>${state.artifactState.featured.summary}</p><div class="row"><span class="subtle">Freshness ${state.artifactState.featured.freshnessLabel}</span><span class="chip">meeting-ready</span></div>`)}${card('Explore', '<div class="grid"><button class="ghost" data-action="navigate" data-route="Ad Hoc">Ask a question</button><button class="ghost">Open Walker</button><button class="ghost">Resume recent analysis</button><button class="ghost">Open saved session</button></div>')}`}
+        : `${lensDeck(state)}${card('Featured Artifact', `<h4>${state.artifactState.featured.title}</h4><p>${state.artifactState.featured.summary}</p><div class="row"><span class="subtle">Freshness ${state.artifactState.featured.freshnessLabel}</span><span class="chip">meeting-ready</span></div>`)}${card('Explore', '<div class="grid"><button class="ghost" data-action="navigate" data-route="Ad Hoc">Ask a question</button><button class="ghost" disabled title="Not implemented yet">Open Walker</button><button class="ghost" disabled title="Not implemented yet">Resume recent analysis</button><button class="ghost" disabled title="Not implemented yet">Open saved session</button></div>')}`}
     </div>
     <div class="grid ${morning ? 'cols-2' : 'cols-3'} mt-12">
       ${card('Foundry Milestones', state.foundryState.milestones.slice(0, 6).map(milestoneRow).join(''))}
