@@ -1,216 +1,51 @@
-const navItems = [
-  'Home',
-  'Foundry',
-  'Lenses',
-  'Ad Hoc',
-  'Documents',
-  'Feedback',
-  'Artifacts',
-  'Logbook'
-];
+import { createInitialState, navItems } from './src/state/domainState.js';
+import { filterLogs } from './src/shared/logFilters.js';
+import { severityClass, jobStateClass } from './src/shared/status.js';
+import { logRow } from './src/shared/renderBits.js';
+import { renderHomeView } from './src/views/homeView.js';
+import { renderFoundryView } from './src/views/foundryView.js';
+import { renderLensesView } from './src/views/lensesView.js';
+import { renderAdHocView } from './src/views/adHocView.js';
+import { renderArtifactsView, renderDocumentsView, renderFeedbackView, renderLogbookView } from './src/views/otherViews.js';
 
-const state = {
-  currentView: 'Home',
-  mode: 'morning',
-  ingestComplete: false,
-  foundryActive: false,
-  documentActive: true,
-  planApproved: false,
-  milestones: [
-    { name: 'File received', status: 'done', time: '07:14' },
-    { name: 'Validation complete', status: 'done', time: '07:16' },
-    { name: 'Raw load complete', status: 'done', time: '07:18' },
-    { name: 'Transform complete', status: 'active', time: 'running' },
-    { name: 'Derived refresh complete', status: 'pending', time: '-' },
-    { name: 'Semantic refresh complete', status: 'pending', time: '-' },
-    { name: 'Health checks passed', status: 'pending', time: '-' },
-    { name: 'Ready for exploration', status: 'pending', time: '-' }
-  ],
-  logs: [
-    'Fed file detected for April 6.',
-    'Validation complete with 3 schema warnings.',
-    'Derived balance tables refreshed successfully.',
-    'Semantic refresh waiting on counterparty aggregation.'
-  ]
+const state = createInitialState();
+const routes = {
+  Home: renderHomeView,
+  Foundry: renderFoundryView,
+  Lenses: renderLensesView,
+  'Ad Hoc': renderAdHocView,
+  Documents: renderDocumentsView,
+  Feedback: renderFeedbackView,
+  Artifacts: renderArtifactsView,
+  Logbook: renderLogbookView
 };
 
-function inferMode() {
-  if (state.foundryActive) return 'run';
-  if (!state.ingestComplete) return 'morning';
-  if (state.documentActive) return 'document';
-  return 'daytime';
-}
-
 function renderNav() {
-  const nav = document.getElementById('navPrimary');
-  nav.innerHTML = '';
-  navItems.forEach((item) => {
-    const btn = document.createElement('button');
-    btn.className = `nav-item ${state.currentView === item ? 'active' : ''}`;
-    btn.textContent = item;
-    btn.onclick = () => {
-      state.currentView = item;
-      render();
-    };
-    nav.appendChild(btn);
-  });
-}
-
-function homeView() {
-  const mode = inferMode();
-  const path = ['Upload', 'Ingest', 'Refresh', 'Explore', 'Package', 'Review'];
-  return `
-    <div class="path-strip">${path
-      .map((s, i) => `<span class="path-step ${i === (mode === 'morning' ? 1 : 3) ? 'active' : ''}">${s}</span>`)
-      .join('')}</div>
-    <div class="row" style="margin-bottom:12px"><h2>Home · ${mode.toUpperCase()} MODE</h2>
-      <button class="ghost" id="toggleMode">Pin Daytime Mode</button></div>
-
-    <div class="grid cols-2">
-      <section class="card">
-        <h3>Foundry Readiness</h3>
-        <div class="heatmap">
-          ${['available','ingested','ingested','failed','partial','awaiting','missing','ingested','ingested','partial','available','awaiting','ingested','missing']
-            .map((s) => `<div class="day ${s}" title="${s}"></div>`).join('')}
-        </div>
-      </section>
-
-      <section class="card">
-        <h3>Foundry Plan</h3>
-        <div class="list">
-          <div class="row"><span>Load daily fed file</span><span class="status s-active">required</span></div>
-          <div class="row"><span>Recompute anomaly baseline</span><span class="status s-warn">optional</span></div>
-          <div class="row"><span>Refresh semantic lens cache</span><span class="status s-active">required</span></div>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <button class="ghost" id="approvePlan">Approve all</button>
-          <button class="ghost" id="runPlan">Run plan</button>
-        </div>
-      </section>
-    </div>
-
-    <div class="grid cols-3" style="margin-top:12px">
-      <section class="card">
-        <h3>Foundry Milestones</h3>
-        <div class="list">
-          ${state.milestones.slice(0, 5).map((m) => `<div class="row"><span>${m.name}</span><span class="status ${m.status === 'done' ? 's-healthy' : m.status === 'active' ? 's-active' : 's-warn'}">${m.time}</span></div>`).join('')}
-        </div>
-      </section>
-
-      <section class="card">
-        <h3>Featured Artifact</h3>
-        <p>Latest semantic anomaly summary with confidence caveats and freshness stamp.</p>
-        <div class="row"><span class="subtle">Freshness: 18 min</span><button class="ghost">Open</button></div>
-      </section>
-
-      <section class="card">
-        <h3>Document Pipeline</h3>
-        <p>Q1_Controls_Pack.pdf · Relationships mapped · 68%</p>
-        <div class="row"><span class="status s-warn">2 warnings</span><button class="ghost">Open full pipeline</button></div>
-      </section>
-    </div>`;
-}
-
-function foundryView() {
-  return `
-    <h2>Foundry</h2>
-    <div class="card" style="margin-bottom:12px">
-      <div class="row"><span>Last ingested date: 2026-04-06</span><span class="status s-active">processing</span></div>
-      <p class="subtle">Missing dates: 1 · Failed dates: 1 · Pending downstream refresh: 2</p>
-    </div>
-    <div class="grid cols-3">
-      <section class="card"><h3>Readiness Heatmap</h3><div class="heatmap">${Array.from({length:21}).map((_,i)=>`<div class="day ${['ingested','available','missing','partial','awaiting','failed'][i%6]}"></div>`).join('')}</div></section>
-      <section class="card"><h3>Foundry Plan</h3><p>Approve and run to complete ingest and semantic refresh.</p><button class="ghost">Run plan</button></section>
-      <section class="card"><h3>Milestones</h3><table class="table"><tr><th>Stage</th><th>Status</th></tr>${state.milestones.map(m=>`<tr><td>${m.name}</td><td>${m.status}</td></tr>`).join('')}</table></section>
-    </div>
-  `;
-}
-
-function lensesView() {
-  return `<h2>Lenses</h2><div class="grid cols-2"><section class="card"><h3>Lens Deck</h3><div class="list"><div>Liquidity lens · Fresh 22m</div><div>Open / queue lens · Fresh 8m</div><div>Anomaly lens · Alert +3σ shift</div><div>Document intelligence lens · Fresh 3h</div></div></section><section class="card"><h3>Lens Hero Panel</h3><p>Featured anomaly lens with plain-language summary and caveat block.</p><div class="row"><button class="ghost">Open full lens</button><button class="ghost">Send to Ad Hoc</button></div></section></div>`;
-}
-
-function adHocView() {
-  return `<h2>Ad Hoc</h2>
-    <div class="card"><h3>Ask Panel</h3><p>What do you want to know?</p><input style="width:100%;padding:8px;background:#0f141c;color:white;border:1px solid #2a3443;border-radius:8px" value="Explain yesterday's settlement spike by counterparty"/></div>
-    <div class="grid cols-2" style="margin-top:12px">
-      <section class="card"><h3>Answer Card</h3><p><strong>Direct answer:</strong> Spike driven by 3 counterparties with late file arrivals.</p><p class="subtle">Coverage 97% · Confidence: medium (2 schema warnings)</p><button class="ghost">Save as artifact</button></section>
-      <section class="card"><h3>Evidence Tabs</h3><div class="chips"><span class="chip">Source slice</span><span class="chip">Working table</span><span class="chip">Summary</span><span class="chip">Walker</span><span class="chip">Run record</span></div><p>Run record preserves interpretation, filters, transforms, assumptions, and caveats.</p></section>
-    </div>
-    <div class="card" style="margin-top:12px"><h3>Refocus Panel</h3><div class="chips"><span class="chip">Narrow time window</span><span class="chip">Break out by from</span><span class="chip">Explain spike</span><span class="chip">Branch analysis</span></div></div>`;
-}
-
-function documentsView() {
-  const stages = ['Received','Preprocessed','Structure detected','Parse strategy chosen','Extraction complete','Relationships mapped','Summary generated','Review package prepared','Feedback applied','Artifact finalized'];
-  return `<h2>Documents</h2><div class="card"><h3>Pipeline View</h3><div class="list">${stages.map((s,i)=>`<div class="row"><span>${s}</span><span class="status ${i<6?'s-healthy':i===6?'s-active':'s-warn'}">${i<6?'done':i===6?'active':'pending'}</span></div>`).join('')}</div></div>`;
-}
-
-function feedbackView() {
-  return `<h2>Feedback</h2><div class="grid cols-2"><section class="card"><h3>Review Items</h3><p>Source snippet: "Approval node B"</p><p>Extracted output: Decision</p><div class="chips"><span class="chip">Wrong type</span><span class="chip">Rewrite suggestion</span></div></section><section class="card"><h3>Recognition Check</h3><p><strong>You said:</strong> This is a control, not a decision.</p><p><strong>System recognized:</strong> Reclassify node type Decision → Control</p><p><strong>Scope:</strong> Current document family</p></section></div>`;
-}
-
-function artifactsView() {
-  return `<h2>Artifacts</h2><div class="grid cols-2"><section class="card"><h3>Pinned Artifacts</h3><div class="list"><div>Weekly liquidity package</div><div>Counterparty anomaly deck</div></div></section><section class="card"><h3>Recent Chart Packages</h3><div class="list"><div>MMD chart pack · 09:02</div><div>Semantic summary · 08:46</div></div></section></div>`;
-}
-
-function logbookView() {
-  return `<h2>Logbook</h2><div class="card"><h3>Unified operational memory</h3>${state.logs.map((l)=>`<div class="log-entry">${l}</div>`).join('')}</div>`;
-}
-
-function renderWorkspace() {
-  const workspace = document.getElementById('workspace');
-  const views = {
-    Home: homeView,
-    Foundry: foundryView,
-    Lenses: lensesView,
-    'Ad Hoc': adHocView,
-    Documents: documentsView,
-    Feedback: feedbackView,
-    Artifacts: artifactsView,
-    Logbook: logbookView
-  };
-  workspace.innerHTML = views[state.currentView]();
-
-  const approve = document.getElementById('approvePlan');
-  if (approve) {
-    approve.onclick = () => {
-      state.planApproved = true;
-      state.logs.unshift('Foundry plan approved by operator.');
-      render();
-    };
-  }
-  const run = document.getElementById('runPlan');
-  if (run) {
-    run.onclick = () => {
-      state.foundryActive = true;
-      state.logs.unshift('Foundry run started with approved steps.');
-      render();
-    };
-  }
-  const pin = document.getElementById('toggleMode');
-  if (pin) {
-    pin.onclick = () => {
-      state.ingestComplete = true;
-      state.documentActive = false;
-      state.logs.unshift('Home default mode pinned to daytime analysis.');
-      render();
-    };
-  }
+  document.getElementById('navPrimary').innerHTML = navItems.map((item) => `<button class="nav-item ${state.appShellState.currentRoute === item ? 'active' : ''}" data-action="navigate" data-route="${item}">${item}</button>`).join('');
 }
 
 function renderContextRail() {
-  const el = document.getElementById('contextRail');
-  el.innerHTML = `
-    <section class="card"><h3>Active Jobs</h3><div class="list"><div>Foundry refresh · run_2026_04_07_01</div><div>Document parse · doc_1142</div></div></section>
-    <section class="card"><h3>Active Alerts</h3><div class="list"><div class="status s-warn">Counterparty aggregate delayed</div><div class="status s-error">1 failed source date</div></div></section>
-    <section class="card"><h3>Recent Artifacts</h3><div class="list"><div>Weekly report package</div><div>Anomaly explainer chart</div></div></section>
-    <section class="card"><h3>Queued Review</h3><div class="list"><div>3 feedback items pending</div></div></section>
-  `;
+  const active = state.foundryState.activeJob;
+  document.getElementById('contextRail').innerHTML = `
+    <section class="card"><h3>Active Jobs</h3><div class="list"><div>${active.label}</div><div class="subtle">${active.id} · ${state.foundryState.runId}</div><span class="status ${jobStateClass(active.state)}">${active.state}</span><p class="subtle">${active.blockerReason}</p></div></section>
+    <section class="card"><h3>Active Alerts</h3><div class="list"><span class="status s-warn">Counterparty aggregate delayed</span><span class="status s-error">1 failed source date</span></div></section>
+    <section class="card"><h3>Recent Artifacts</h3><div class="list">${state.artifactState.recent.map((r) => `<div>${r}</div>`).join('')}</div></section>
+    <section class="card"><h3>Pinned Views</h3><div class="list"><div>Anomaly lens</div><div>Weekly reporting lens</div><div>Run health snapshot</div></div></section>`;
 }
 
 function renderDrawer() {
-  const body = document.getElementById('drawerBody');
-  body.innerHTML = state.logs.map((l) => `<div class="log-entry">${l}</div>`).join('');
+  document.getElementById('drawerBody').innerHTML = filterLogs(state.logbookState.entries, state.appShellState.logFilters).map(logRow).join('');
+}
+
+function renderWorkspace() {
+  document.getElementById('workspace').innerHTML = routes[state.appShellState.currentRoute](state);
+}
+
+function updateTopBar() {
+  state.appShellState.lastRefreshedAt = new Date();
+  document.getElementById('lastRefreshed').textContent = `Last refreshed ${state.appShellState.lastRefreshedAt.toLocaleTimeString()}`;
+  document.getElementById('activeJobPill').textContent = state.foundryState.activeJob.state === 'running' ? '1 Active Job' : '1 Job Blocked';
+  document.getElementById('activeJobPill').className = `badge ${severityClass(state.foundryState.activeJob.state === 'running' ? 'ok' : 'warn')}`;
 }
 
 function render() {
@@ -218,11 +53,154 @@ function render() {
   renderWorkspace();
   renderContextRail();
   renderDrawer();
-  document.getElementById('lastRefreshed').textContent = `Last refreshed ${new Date().toLocaleTimeString()}`;
+  updateTopBar();
 }
 
-document.getElementById('toggleDrawer').onclick = () => {
-  document.getElementById('drawerBody').classList.toggle('hidden');
-};
+function addLog(source, severity, title, detail) {
+  state.logbookState.entries.unshift({ id: `l_${Date.now()}`, at: new Date().toISOString().slice(11, 16), source, severity, title, detail });
+}
 
+function applyFoundryPhaseProgression() {
+  const phase = state.foundryState.progressionPhase;
+  const next = phase + 1;
+  state.foundryState.progressionPhase = next;
+
+  if (next === 1) {
+    state.foundryState.activeJob = { ...state.foundryState.activeJob, state: 'running', label: 'Foundry run executing approved steps', blockerReason: 'No blocker. Transform and derived refresh in progress.' };
+    state.foundryState.milestones = state.foundryState.milestones.map((m) => (m.id === 'm4' ? { ...m, title: 'Transform running', state: 'active', at: 'Running · 1m' } : m));
+    addLog('Foundry', 'info', 'Foundry run started.', `Run id ${state.foundryState.runId}`);
+    return;
+  }
+
+  if (next === 2) {
+    state.foundryState.milestones = state.foundryState.milestones.map((m) => {
+      if (m.id === 'm4') return { ...m, title: 'Transform complete', state: 'done', at: '08:01 UTC', detail: 'Transform completed successfully.' };
+      if (m.id === 'm5') return { ...m, title: 'Derived refresh complete', state: 'done', at: '08:03 UTC', detail: 'Derived refresh completed on all partitions.' };
+      if (m.id === 'm6') return { ...m, title: 'Semantic refresh running', state: 'active', at: 'Running · 2m', detail: 'Semantic refresh currently building lens indexes.' };
+      return m;
+    });
+    addLog('Foundry', 'info', 'Transform and derived refresh completed.', 'Semantic refresh advanced to active.');
+    return;
+  }
+
+  state.foundryState.activeJob = { ...state.foundryState.activeJob, state: 'complete', label: 'Foundry run complete', blockerReason: 'All stages complete. Ready for exploration.' };
+  state.foundryState.readinessComplete = true;
+  state.foundryState.milestones = state.foundryState.milestones.map((m) => {
+    if (m.id === 'm6') return { ...m, title: 'Semantic refresh complete', state: 'done', at: '08:06 UTC', detail: 'Semantic indexes refreshed successfully.' };
+    if (m.id === 'm7') return { ...m, title: 'Health checks passed', state: 'done', at: '08:08 UTC', detail: 'Health checks passed with no critical findings.' };
+    if (m.id === 'm8') return { ...m, state: 'done', at: '08:09 UTC', detail: 'Ready for exploration confirmed.' };
+    return m;
+  });
+  addLog('Foundry', 'ok', 'Foundry run completed.', 'All milestones completed and environment is ready.');
+}
+
+function handleAction(el) {
+  const action = el.dataset.action;
+  if (!action) return;
+
+  if (action === 'navigate') state.appShellState.currentRoute = el.dataset.route;
+  if (action === 'select-day') state.foundryState.selectedDayId = el.dataset.dayId;
+
+  if (action === 'approve-plan') {
+    state.foundryState.planApproved = true;
+    addLog('Foundry', 'info', 'Foundry plan approved by operator.', 'All required and enabled optional steps approved.');
+  }
+  if (action === 'toggle-optional') {
+    state.foundryState.plan = state.foundryState.plan.map((step) => (step.required ? step : { ...step, enabled: !step.enabled }));
+    addLog('Foundry', 'info', 'Optional plan steps toggled.', 'Operator changed optional step states.');
+  }
+  if (action === 'toggle-plan-step') {
+    state.foundryState.plan = state.foundryState.plan.map((step) => (step.id === el.dataset.planId ? { ...step, enabled: !step.enabled } : step));
+  }
+  if (action === 'run-plan') {
+    state.foundryState.planApproved = true;
+    applyFoundryPhaseProgression();
+  }
+  if (action === 'foundry-log-severity') state.appShellState.foundryLogSeverity = el.value;
+  if (action === 'pin-home-mode') state.appShellState.homeModePreference = el.dataset.mode;
+
+  if (action === 'send-hero-to-adhoc') {
+    state.appShellState.currentRoute = 'Ad Hoc';
+    addLog('Lenses', 'info', 'Lens hero handed off to Ad Hoc.', 'Counterparty volatility context sent to analysis workspace.');
+  }
+
+  if (action === 'open-lens' || action === 'open-lens-from-home') {
+    addLog('Lenses', 'info', 'Lens opened from deck.', `Lens ${el.dataset.lensId}`);
+  }
+
+  if (action === 'interpret-question') {
+    const s = state.adHocSessionState.sessionsById[state.adHocSessionState.activeSessionId];
+    const input = document.getElementById('askInput').value.trim();
+    s.rootQuestion = input || s.rootQuestion;
+    addLog('Ad Hoc', 'info', 'Question interpreted and evidence run prepared.', `Prompt: ${s.rootQuestion}`);
+  }
+  if (action === 'switch-evidence-tab') state.adHocSessionState.activeEvidenceTab = el.dataset.tab;
+
+  if (action === 'refine-current') {
+    const s = state.adHocSessionState.sessionsById[state.adHocSessionState.activeSessionId];
+    s.currentFocus = `Refined: ${el.dataset.suggestion}`;
+    s.refinements.push({ type: 'refine', suggestion: el.dataset.suggestion, at: new Date().toISOString() });
+    addLog('Ad Hoc', 'info', `Refinement applied: ${el.dataset.suggestion}.`, 'Current analysis updated in place.');
+  }
+  if (action === 'branch-analysis') {
+    const parent = state.adHocSessionState.sessionsById[state.adHocSessionState.activeSessionId];
+    const id = `analysis_${Date.now()}`;
+    state.adHocSessionState.sessionsById[id] = {
+      ...parent,
+      id,
+      parentSessionId: parent.id,
+      currentFocus: `Branched: ${el.dataset.suggestion}`,
+      refinements: [...parent.refinements, { type: 'branch', suggestion: el.dataset.suggestion, at: new Date().toISOString() }]
+    };
+    state.adHocSessionState.activeSessionId = id;
+    addLog('Ad Hoc', 'info', `Branch created: ${el.dataset.suggestion}.`, `Parent session ${parent.id}`);
+  }
+
+  if (action === 'apply-feedback') {
+    state.feedbackState.reviewItems = state.feedbackState.reviewItems.map((r) => r.status === 'pending' ? { ...r, status: 'applied' } : r);
+    state.feedbackState.history.unshift('09:33 · Pending feedback batch applied across current family.');
+    addLog('Feedback', 'info', 'Pending feedback applied.', 'Recognition updates and summary refinements were applied.');
+  }
+
+  if (action === 'open-artifact') {
+    const item = state.artifactState.shelf.find((a) => a.id === el.dataset.artifactId);
+    if (item) addLog('Artifacts', 'info', `Artifact opened: ${item.title}.`, 'Opened from artifacts shelf.');
+  }
+
+  if (action === 'pin-artifact') {
+    const item = state.artifactState.shelf.find((a) => a.id === el.dataset.artifactId);
+    if (item) {
+      state.artifactState.shelf = [{ ...item, readiness: 'meeting-ready' }, ...state.artifactState.shelf.filter((a) => a.id !== item.id)];
+      addLog('Artifacts', 'ok', `Artifact pinned: ${item.title}.`, 'Pinned to top of shelf for rapid access.');
+    }
+  }
+  if (action === 'reset-original') {
+    state.adHocSessionState.activeSessionId = state.adHocSessionState.rootSessionId;
+    state.adHocSessionState.activeEvidenceTab = 'source-slice';
+    addLog('Ad Hoc', 'info', 'Analysis reset to original session.', `Session ${state.adHocSessionState.rootSessionId} restored.`);
+  }
+
+  render();
+}
+
+function bindEvents() {
+  document.getElementById('app').addEventListener('click', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (target) handleAction(target);
+  });
+  document.getElementById('app').addEventListener('change', (event) => {
+    const target = event.target;
+    if (target.matches('[data-action="foundry-log-severity"]')) handleAction(target);
+  });
+
+  document.getElementById('toggleDrawer').onclick = () => {
+    state.appShellState.drawerOpen = !state.appShellState.drawerOpen;
+    document.getElementById('drawerBody').classList.toggle('hidden', !state.appShellState.drawerOpen);
+  };
+  document.getElementById('drawerSearch').oninput = (e) => { state.appShellState.logFilters.search = e.target.value; renderDrawer(); };
+  document.getElementById('drawerSource').onchange = (e) => { state.appShellState.logFilters.source = e.target.value; renderDrawer(); };
+  document.getElementById('drawerSeverity').onchange = (e) => { state.appShellState.logFilters.severity = e.target.value; renderDrawer(); };
+}
+
+bindEvents();
 render();

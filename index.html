@@ -19,8 +19,8 @@
         <div class="topbar-right">
           <span class="badge env">PROD</span>
           <span id="lastRefreshed" class="subtle"></span>
-          <button class="ghost">⌘K Search</button>
-          <span class="badge active">1 Active Job</span>
+          <button class="ghost">⌘K Command/Search</button>
+          <span id="activeJobPill" class="badge active">1 Active Job</span>
         </div>
       </header>
 
@@ -34,22 +34,34 @@
       </aside>
 
       <main id="workspace" class="workspace"></main>
-
       <aside id="contextRail" class="context-rail"></aside>
 
       <section class="logbook-drawer" id="logbookDrawer">
         <div class="drawer-header">
           <button id="toggleDrawer" class="ghost">Logbook</button>
-          <div class="chips">
-            <span class="chip">Foundry</span>
-            <span class="chip">Warning</span>
-            <span class="chip">Today</span>
+          <div class="drawer-filters">
+            <input id="drawerSearch" class="text-input" placeholder="Search logs" />
+            <select id="drawerSource" class="select-input">
+              <option value="all">All sources</option>
+              <option>Foundry</option>
+              <option>Lenses</option>
+              <option>Ad Hoc</option>
+              <option>Documents</option>
+              <option>Feedback</option>
+            </select>
+            <select id="drawerSeverity" class="select-input">
+              <option value="all">All severity</option>
+              <option value="ok">ok</option>
+              <option value="info">info</option>
+              <option value="warn">warn</option>
+              <option value="error">error</option>
+            </select>
           </div>
         </div>
         <div id="drawerBody" class="drawer-body"></div>
       </section>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
