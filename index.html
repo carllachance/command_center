@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Command Center</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="emblem">◈</div>
+          <div>
+            <h1>Command Center</h1>
+            <p class="subtle">Personal Operations Console</p>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <span class="badge env">PROD</span>
+          <span id="lastRefreshed" class="subtle"></span>
+          <button class="ghost">⌘K Search</button>
+          <span class="badge active">1 Active Job</span>
+        </div>
+      </header>
+
+      <aside class="nav-rail">
+        <nav id="navPrimary"></nav>
+        <div class="nav-secondary">
+          <button class="nav-item">Pinned</button>
+          <button class="nav-item">Settings</button>
+          <button class="nav-item">Command</button>
+        </div>
+      </aside>
+
+      <main id="workspace" class="workspace"></main>
+
+      <aside id="contextRail" class="context-rail"></aside>
+
+      <section class="logbook-drawer" id="logbookDrawer">
+        <div class="drawer-header">
+          <button id="toggleDrawer" class="ghost">Logbook</button>
+          <div class="chips">
+            <span class="chip">Foundry</span>
+            <span class="chip">Warning</span>
+            <span class="chip">Today</span>
+          </div>
+        </div>
+        <div id="drawerBody" class="drawer-body"></div>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
