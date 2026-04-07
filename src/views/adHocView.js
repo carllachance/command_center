@@ -5,7 +5,7 @@ function renderEvidenceBody(session, tab) {
   if (tab === 'source-slice') return `<p class="subtle">${session.sourceSlice}</p>`;
   if (tab === 'working-table') return `<table class="table"><tr><th>Counterparty</th><th>Settlement</th><th>Δ vs baseline</th><th>Note</th></tr>${session.workingTable.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</table>`;
   if (tab === 'summary') return `<p>${session.summaryTable}</p>`;
-  if (tab === 'walker') return `<div class="walker-card"><p><strong>Walker</strong></p><p class="subtle">${session.walkerConfig}</p><button class="ghost">Open Walker workspace</button></div>`;
+  if (tab === 'walker') return `<div class="walker-card"><p><strong>Walker</strong></p><p class="subtle">${session.walkerConfig}</p><button class="ghost" disabled title="Not implemented yet">Open Walker workspace</button></div>`;
   return `<p class="subtle">${session.runRecord}</p>`;
 }
 

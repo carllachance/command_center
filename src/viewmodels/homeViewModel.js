@@ -2,13 +2,15 @@ import { filterLogs } from '../shared/logFilters.js';
 
 export function inferHomeMode(state) {
   const preferred = state.appShellState.homeModePreference;
+  const criticalOverride = state.foundryState.criticalOverrideMode;
   const jobState = state.foundryState.activeJob.state;
 
+  if (criticalOverride) return criticalOverride;
+  if (preferred) return preferred;
   if (jobState === 'blocked') return 'foundry-blocked';
   if (jobState === 'running') return 'foundry-run';
   if (!state.foundryState.readinessComplete) return 'morning-readiness';
   if (state.foundryState.documentAttentionRequired) return 'document-attention';
-  if (preferred) return preferred;
   return 'daytime-analysis';
 }
 

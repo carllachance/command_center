@@ -44,8 +44,15 @@ function renderWorkspace() {
 function updateTopBar() {
   state.appShellState.lastRefreshedAt = new Date();
   document.getElementById('lastRefreshed').textContent = `Last refreshed ${state.appShellState.lastRefreshedAt.toLocaleTimeString()}`;
-  document.getElementById('activeJobPill').textContent = state.foundryState.activeJob.state === 'running' ? '1 Active Job' : '1 Job Blocked';
-  document.getElementById('activeJobPill').className = `badge ${severityClass(state.foundryState.activeJob.state === 'running' ? 'ok' : 'warn')}`;
+  const byState = {
+    running: { label: '1 Job Running', severity: 'info' },
+    blocked: { label: '1 Job Blocked', severity: 'warn' },
+    complete: { label: '1 Job Complete', severity: 'ok' },
+    idle: { label: 'No Active Jobs', severity: 'info' }
+  };
+  const summary = byState[state.foundryState.activeJob.state] || byState.idle;
+  document.getElementById('activeJobPill').textContent = summary.label;
+  document.getElementById('activeJobPill').className = `badge ${severityClass(summary.severity)}`;
 }
 
 function render() {
@@ -60,8 +67,22 @@ function addLog(source, severity, title, detail) {
   state.logbookState.entries.unshift({ id: `l_${Date.now()}`, at: new Date().toISOString().slice(11, 16), source, severity, title, detail });
 }
 
+function recomputeDerivedState() {
+  state.foundryState.documentAttentionRequired = state.documentPipelineState.queue.some((item) => item.risk !== 'low')
+    || state.documentPipelineState.stageWarnings.length > 0;
+}
+
+function reconcilePlanApproval() {
+  state.foundryState.plan = state.foundryState.plan.map((step) => ({
+    ...step,
+    approved: step.required || step.enabled
+  }));
+  state.foundryState.planApproved = state.foundryState.plan.every((step) => !step.enabled || step.approved);
+}
+
 function applyFoundryPhaseProgression() {
   const phase = state.foundryState.progressionPhase;
+  if (phase >= 3) return false;
   const next = phase + 1;
   state.foundryState.progressionPhase = next;
 
@@ -69,7 +90,7 @@ function applyFoundryPhaseProgression() {
     state.foundryState.activeJob = { ...state.foundryState.activeJob, state: 'running', label: 'Foundry run executing approved steps', blockerReason: 'No blocker. Transform and derived refresh in progress.' };
     state.foundryState.milestones = state.foundryState.milestones.map((m) => (m.id === 'm4' ? { ...m, title: 'Transform running', state: 'active', at: 'Running · 1m' } : m));
     addLog('Foundry', 'info', 'Foundry run started.', `Run id ${state.foundryState.runId}`);
-    return;
+    return true;
   }
 
   if (next === 2) {
@@ -80,7 +101,7 @@ function applyFoundryPhaseProgression() {
       return m;
     });
     addLog('Foundry', 'info', 'Transform and derived refresh completed.', 'Semantic refresh advanced to active.');
-    return;
+    return true;
   }
 
   state.foundryState.activeJob = { ...state.foundryState.activeJob, state: 'complete', label: 'Foundry run complete', blockerReason: 'All stages complete. Ready for exploration.' };
@@ -92,6 +113,14 @@ function applyFoundryPhaseProgression() {
     return m;
   });
   addLog('Foundry', 'ok', 'Foundry run completed.', 'All milestones completed and environment is ready.');
+  return true;
+}
+
+function runFoundryPlanToCompletion() {
+  reconcilePlanApproval();
+  while (state.foundryState.progressionPhase < 3) {
+    applyFoundryPhaseProgression();
+  }
 }
 
 function handleAction(el) {
@@ -102,19 +131,20 @@ function handleAction(el) {
   if (action === 'select-day') state.foundryState.selectedDayId = el.dataset.dayId;
 
   if (action === 'approve-plan') {
-    state.foundryState.planApproved = true;
-    addLog('Foundry', 'info', 'Foundry plan approved by operator.', 'All required and enabled optional steps approved.');
+    reconcilePlanApproval();
+    addLog('Foundry', 'info', 'Foundry plan approved by operator.', 'Enabled steps were reconciled and marked approved.');
   }
   if (action === 'toggle-optional') {
-    state.foundryState.plan = state.foundryState.plan.map((step) => (step.required ? step : { ...step, enabled: !step.enabled }));
+    state.foundryState.plan = state.foundryState.plan.map((step) => (step.required ? step : { ...step, enabled: !step.enabled, approved: false }));
+    state.foundryState.planApproved = false;
     addLog('Foundry', 'info', 'Optional plan steps toggled.', 'Operator changed optional step states.');
   }
   if (action === 'toggle-plan-step') {
-    state.foundryState.plan = state.foundryState.plan.map((step) => (step.id === el.dataset.planId ? { ...step, enabled: !step.enabled } : step));
+    state.foundryState.plan = state.foundryState.plan.map((step) => (step.id === el.dataset.planId ? { ...step, enabled: !step.enabled, approved: false } : step));
+    state.foundryState.planApproved = false;
   }
   if (action === 'run-plan') {
-    state.foundryState.planApproved = true;
-    applyFoundryPhaseProgression();
+    runFoundryPlanToCompletion();
   }
   if (action === 'foundry-log-severity') state.appShellState.foundryLogSeverity = el.value;
   if (action === 'pin-home-mode') state.appShellState.homeModePreference = el.dataset.mode;
@@ -180,6 +210,7 @@ function handleAction(el) {
     addLog('Ad Hoc', 'info', 'Analysis reset to original session.', `Session ${state.adHocSessionState.rootSessionId} restored.`);
   }
 
+  recomputeDerivedState();
   render();
 }
 
@@ -203,4 +234,5 @@ function bindEvents() {
 }
 
 bindEvents();
+recomputeDerivedState();
 render();
